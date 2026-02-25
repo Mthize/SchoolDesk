@@ -250,7 +250,7 @@ Run `npm run lint` before committing.
 
 ## Important Notes
 
-- The frontend directory is named **fontend** (not frontend) - do not rename
+- The frontend directory
 - Backend uses **Bun** runtime, not Node.js directly
 - MongoDB is required for backend (uses Mongoose ODM)
 - No test framework is currently set up
