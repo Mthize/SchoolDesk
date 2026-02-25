@@ -1,6 +1,7 @@
 import { type Request, type Response } from "express";
-import User from "../models/user";
+import { User } from "../models/user";
 import { generateToken } from "../utils/generateToken";
+import { logActivity } from "../utils/activitylog";
 
 // @desc Register a new user
 // @route POST /api/users/register
@@ -8,7 +9,14 @@ import { generateToken } from "../utils/generateToken";
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
-      name, email, password, role, studentClass, teacherSubject, isActive } = req.body;
+      name,
+      email,
+      password,
+      role,
+      studentClass,
+      teacherSubject,
+      isActive,
+    } = req.body;
 
     // check if user already exists
     const existingUser = await User.findOne({ email });
@@ -27,47 +35,51 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       studentClass,
       teacherSubject,
       isActive,
-    })
+    });
 
     if (newUser) {
+      if ((req as any).user) {
+        await logActivity({
+          userId: (req as any).user.id,
+          action: "Registered User",
+          details: `Registered user ${newUser.name}`,
+        });
+      }
       res.status(201).json({
-         _id: newUser._id,
-         name: newUser.name,
-         email: newUser.email,
-         role: newUser.role,
-         isActive: newUser.isActive,
-         studentClass: newUser.studentClass,
-         teacherSubject: newUser.teacherSubject,
+        _id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        isActive: newUser.isActive,
+        studentClass: newUser.studentClass,
+        teacherSubject: newUser.teacherSubject,
         message: "User created successfully",
-      })
+      });
     } else {
       res.status(500).json({ message: "Invalid user data" });
     }
   } catch (error) {
     res.status(500).json({ message: "Server Error", error });
   }
-}
-
+};
 
 // @desc Auth user & get token
 // @route POST /api/users/login
 // @access Public
 export const login = async (req: Request, res: Response): Promise<void> => {
- 
   try {
-     const { email, password } = req.body;
-     const user = await User.findOne({ email });
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
 
     // check if user exist and password match
-    if (user && await user.matchPassword(password)) {
-       // generate token
-       generateToken(user.id.toString(), res);
-       res.json(user)
+    if (user && (await user.matchPassword(password))) {
+      // generate token
+      generateToken(user.id.toString(), res);
+      res.json(user); 
     } else {
       res.status(400).json({ message: "Invalid email or password" });
     }
-    
   } catch (error) {
     res.status(500).json({ message: "Server Error", error });
   }
-}
+};

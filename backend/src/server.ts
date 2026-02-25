@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { connectDB } from "./config/db";
 import userRoutes from "./routes/user";
+import LogsRouters from "./routes/activitylog";
 
 
 // load environment variables from .env file
@@ -43,14 +44,13 @@ app.get("/", (req: Request, res: Response) => {
 
 // user routes
 app.use("/api/users", userRoutes);
+app.use("/api/activities", LogsRouters);
 
 // global error handler
-app.use((err: Error, req: Request, res: Response, 
-  next: Function) => {
+app.use((err: Error, req: Request, res: Response) => {
     console.error(err.stack);
     res.status(500).json({ status: "ERROR", message: err.message });
-  }
-);
+});
 
 
 
