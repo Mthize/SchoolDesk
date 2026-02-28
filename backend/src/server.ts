@@ -9,6 +9,7 @@ import cors from "cors";
 import { connectDB } from "./config/db";
 import userRoutes from "./routes/user";
 import LogsRouters from "./routes/activitieslog";
+import academicYearRouter from "./routes/academicYear";
 
 
 // load environment variables from .env file
@@ -45,6 +46,7 @@ app.get("/", (req: Request, res: Response) => {
 // user routes
 app.use("/api/users", userRoutes);
 app.use("/api/activities", LogsRouters);
+app.use("/api/academic-year", academicYearRouter);
 
 // global error handler
 app.use((err: Error, req: Request, res: Response) => {
