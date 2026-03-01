@@ -10,6 +10,7 @@ import { connectDB } from "./config/db";
 import userRoutes from "./routes/user";
 import LogsRouters from "./routes/activitieslog";
 import academicYearRouter from "./routes/academicYear";
+import classRouter from "./routes/class";
 
 
 // load environment variables from .env file
@@ -47,6 +48,7 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/users", userRoutes);
 app.use("/api/activities", LogsRouters);
 app.use("/api/academic-year", academicYearRouter);
+app.use("/api/classes", classRouter);
 
 // global error handler
 app.use((err: Error, req: Request, res: Response) => {

@@ -1,256 +1,194 @@
-# AGENTS.md - Development Guidelines for SchoolDesk
+# AGENTS.md - SchoolDesk Development Guidelines
+
+This document provides essential information for agents working on the SchoolDesk project.
 
 ## Project Overview
 
-This is a monorepo containing:
-- **backend/** - Express.js API with Bun runtime, MongoDB/Mongoose
-- **fontend/** - React 19 + TypeScript + Vite (note: intentionally named "fontend")
+SchoolDesk is a full-stack web application with:
+- **Backend**: Express.js with TypeScript, MongoDB (Mongoose), Bun runtime
+- **Frontend**: React 19 with TypeScript, Vite
 
 ---
 
-## Build, Lint, and Test Commands
+## Commands
 
-### Frontend (fontend/)
+### Backend (from `backend/` directory)
 
-```bash
-# Development server with HMR
-cd fontend && npm run dev
+| Command | Description |
+|---------|-------------|
+| `bun install` | Install dependencies |
+| `bun dev` | Run development server with nodemon (hot reload) |
+| `bun start` | Run server with hot reload |
 
-# Production build
-cd fontend && npm run build
+### Frontend (from `frontend/` directory)
 
-# Run ESLint (linting only, no auto-fix)
-cd fontend && npm run lint
-
-# Lint with auto-fix
-cd fontend && npx eslint . --fix
-
-# Preview production build
-cd fontend && npm run preview
-
-# TypeScript type checking
-cd fontend && npx tsc --noEmit
-```
-
-### Backend (backend/)
-
-```bash
-# Development server with auto-reload (using nodemon + bun)
-cd backend && bun run dev
-
-# Start production server
-cd backend && bun start
-
-# Install dependencies
-cd backend && bun install
-
-# TypeScript type checking
-cd backend && npx tsc --noEmit
-```
+| Command | Description |
+|---------|-------------|
+| `npm install` | Install dependencies |
+| `npm run dev` | Start Vite development server |
+| `npm run build` | Type-check and build for production |
+| `npm run lint` | Run ESLint on entire project |
+| `npm run preview` | Preview production build |
 
 ### Running a Single Test
 
-**No test framework is currently configured.** To add tests:
-1. Install Vitest (`npm install -D vitest`) for frontend
-2. Install Bun's built-in test runner for backend (`bun test`)
-3. Update this section with appropriate commands
+Currently there are no test frameworks configured. To add tests, use:
+- **Backend**: `bun test` or `vitest`
+- **Frontend**: `npm run test` with Vitest or Jest
 
 ---
 
 ## Code Style Guidelines
 
-### General
+### General Principles
 
-- Use **TypeScript** exclusively (`.ts` / `.tsx` files)
-- Enable **strict mode** in TypeScript
-- Use `bun` for backend runtime, `npm` for frontend tooling
+- **No comments** unless explicitly required by the user
+- Use **strict TypeScript** everywhere
+- Prefer **early returns** over nested conditionals
+- Keep functions small and focused (single responsibility)
 
-### Formatting
+### TypeScript Configuration
 
-- Use **2 spaces** for indentation (match existing code)
-- Use **double quotes** for strings in backend, single quotes in frontend (follow ESLint defaults)
-- Use **semicolons** in backend code
-- Add trailing commas where appropriate
-- Maximum line length: 100 characters (soft limit)
+**Backend** (`backend/tsconfig.json`):
+- Strict mode enabled
+- `moduleResolution: bundler`
+- `verbatimModuleSyntax: true`
+- `noUnusedLocals: false`, `noUnusedParameters: false`
+
+**Frontend** (`frontend/tsconfig.app.json`):
+- Strict mode enabled
+- `noUnusedLocals: true`, `noUnusedParameters: true`
+- `verbatimModuleSyntax: true`
+- `erasableSyntaxOnly: true`
 
 ### Imports
 
+**Order** (alphabetical within groups):
+1. External libraries (React, Express, etc.)
+2. Internal models/types
+3. Internal utilities
+4. Internal middleware
+5. Internal controllers/routes
+
+**Example**:
 ```typescript
-// Backend - use type imports where possible
-import express, { type Application, type Request, type Response } from "express";
-import { User } from "../models/user";
-
-// Frontend - group imports logically
-import { useState } from 'react'
-import './App.css'
-import { api } from './services/api'
+import { type Request, type Response, type NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { User, type userRoles } from "../models/user";
+import { generateToken } from "../utils/generateToken";
+import { protect } from "../middleware/auth";
+import { logActivity } from "../utils/activitylog";
 ```
-
-- Use **barrel exports** (`index.ts`) for clean public APIs
-- Use **path aliases** if configured (check tsconfig.json)
-- Import types separately: `import { type SomeType } from "..."`
 
 ### Naming Conventions
 
-| Element | Convention | Example |
-|---------|-----------|---------|
-| Files | kebab-case | `user-controller.ts`, `activity-log.ts` |
-| Components | PascalCase | `UserProfile.tsx`, `Dashboard.tsx` |
-| Functions | camelCase | `getUserById()`, `calculateTotal()` |
-| Variables | camelCase | `userList`, `isActive` |
-| Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT`, `API_BASE_URL` |
-| Interfaces/Types | PascalCase | `UserResponse`, `ApiError` |
-| Enums | PascalCase (members UPPER) | `UserRole.ADMIN` |
+| Type | Convention | Example |
+|------|------------|---------|
+| Files | kebab-case | `academic-year.ts`, `activities-log.ts` |
+| Models | PascalCase | `User`, `AcademicYear` |
+| Controllers | PascalCase | `register`, `getAllUsers` |
+| Functions | camelCase | `generateToken`, `logActivity` |
+| Interfaces/Types | PascalCase | `AuthRequest`, `UserRole` |
+| Enums | PascalCase with UPPER values | `UserRole.ADMIN` |
+| Database fields | camelCase | `studentClass`, `teacherSubject` |
+| Routes | kebab-case with slashes | `/api/users/:id` |
 
-### Types
+### React/Frontend Patterns
 
-- Always define **return types** for functions
-- Use **explicit types** over `any`
-- Use **generics** for reusable components
-- Prefer **interfaces** for object shapes, **types** for unions/intersections
-
-```typescript
-// Good
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
-export const getUser = async (id: string): Promise<User | null> => {
-  // ...
-}
-
-// Avoid
-const getUser = async (id) => {
-  // ...
-}
-```
+- Use **functional components** with hooks
+- Use **named exports** for components
+- Component file naming: `PascalCase.tsx`
+- Keep components in `src/components/` or feature folders
+- Use TypeScript interfaces for props
 
 ### Error Handling
 
-- Use **try/catch** blocks for async operations
-- Return consistent error responses
-- Log errors appropriately (use `console.error` in backend)
-
+**Backend pattern** (Express controllers):
 ```typescript
-// Backend pattern
-export const someHandler = async (req: Request, res: Response): Promise<void> => {
+export const controllerName = async (req: Request, res: Response): Promise<void> => {
   try {
-    // logic
+    // Business logic
     res.status(200).json({ data: result });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Server Error", error });
   }
 };
 ```
 
-### React Components
+- Always wrap async controller logic in try/catch
+- Return appropriate HTTP status codes (200, 201, 400, 401, 404, 500)
+- Use consistent error response format: `{ message: string, error?: any }`
+- Log errors with context when possible
 
-- Use **functional components** with hooks
-- Use **React 19** features (React Compiler enabled)
-- Define **Props** types explicitly
+**Frontend pattern**:
+- Handle API errors with try/catch in async functions
+- Display user-friendly error messages
+- Use TypeScript types for API responses
 
+### Database (MongoDB/Mongoose)
+
+- Define interfaces for Document types
+- Use Mongoose pre-save middleware for password hashing
+- Use `Schema.pre()` hooks for data transformations
+- Index frequently queried fields
+- Use enums for fixed-value fields
+
+**Model example**:
 ```typescript
-interface ButtonProps {
-  label: string;
-  onClick: () => void;
-  variant?: 'primary' | 'secondary';
+export enum UserRole {
+  ADMIN = "admin",
+  TEACHER = "teacher",
+  STUDENT = "student",
+  PARENT = "parent",
 }
 
-export function Button({ label, onClick, variant = 'primary' }: ButtonProps) {
-  return <button onClick={onClick}>{label}</button>;
+export interface User extends Document {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  matchPassword: (enteredPassword: string) => Promise<boolean>;
 }
 ```
 
-### Express.js Patterns (Backend)
+### Authentication
 
-- Use **controllers** for business logic
-- Use **routes** for routing definitions
-- Use **middleware** for cross-cutting concerns
-- Use **models** for Mongoose schemas
+- Use JWT stored in HTTP-only cookies
+- Token verification in middleware (`src/middleware/auth.ts`)
+- Role-based access control via `authorize()` middleware
+
+---
+
+## Project Structure
 
 ```
-backend/src/
-├── config/       # Database, environment config
-├── controllers/  # Request handlers (business logic)
-├── middleware/   # Auth, validation, etc.
-├── models/       # Mongoose schemas
-├── routes/       # Route definitions
-├── utils/        # Helper functions
-└── server.ts     # App entry point
+/backend
+  /src
+    /config       - Database configuration
+    /controllers  - Request handlers
+    /middleware   - Auth, validation, etc.
+    /models       - Mongoose schemas
+    /routes       - Express routes
+    /types        - TypeScript interfaces
+    /utils        - Helper functions
+    server.ts     - Entry point
+
+/frontend
+  /src
+    /components   - React components
+    /hooks        - Custom React hooks
+    /pages        - Page components
+    /api          - API client functions
+    App.tsx       - Root component
+    main.tsx      - Entry point
 ```
-
----
-
-## Environment Variables
-
-Create `.env` files in respective directories:
-
-```bash
-# backend/.env
-PORT=5000
-NODE_ENV=development
-CLIENT_URL=http://localhost:5173
-MONGODB_URI=mongodb://localhost:27017/schooldesk
-JWT_SECRET=your-secret-key
-
-# fontend/.env
-VITE_API_URL=http://localhost:5000
-```
-
----
-
-## ESLint Configuration
-
-The frontend uses ESLint with these plugins:
-- `@eslint/js`
-- `typescript-eslint`
-- `eslint-plugin-react-hooks`
-- `eslint-plugin-react-refresh`
-
-Run `npm run lint` before committing.
-
----
-
-## TypeScript Configuration
-
-### Frontend (fontend/tsconfig.app.json)
-- Target: ES2022
-- Module: ESNext
-- Strict mode enabled
-- `jsx: "react-jsx"`
-
-### Backend (backend/tsconfig.json)
-- Target: ESNext
-- Module: Preserve
-- Strict mode enabled
-- `verbatimModuleSyntax: true`
-
----
-
-## Common Tasks
-
-### Adding a new backend route
-1. Create controller in `src/controllers/`
-2. Create route in `src/routes/`
-3. Register in `server.ts`
-
-### Adding a new frontend page
-1. Create component in `src/components/` or `src/pages/`
-2. Add route in routing configuration
-3. Run `npm run build` to verify no type errors
-
-### Adding a new model
-1. Create Mongoose schema in `backend/src/models/`
-2. Export type/interface for frontend use
 
 ---
 
 ## Important Notes
 
-- The frontend directory
-- Backend uses **Bun** runtime, not Node.js directly
-- MongoDB is required for backend (uses Mongoose ODM)
-- No test framework is currently set up
+- **Backend**: Uses Bun runtime (not Node.js directly)
+- **Environment**: All secrets go in `.env` files (never commit these)
+- **No tests currently exist** - consider adding Vitest for both projects
+- **API Routes**: Follow RESTful conventions (`/api/resource`, POST/GET/PUT/DELETE)
+- **Response format**: Use consistent JSON structure `{ data }` or `{ message }`
