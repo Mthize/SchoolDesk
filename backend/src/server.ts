@@ -11,6 +11,7 @@ import userRoutes from "./routes/user";
 import LogsRouters from "./routes/activitieslog";
 import academicYearRouter from "./routes/academicYear";
 import classRouter from "./routes/class";
+import subjectRouter from "./routes/subject";
 
 
 // load environment variables from .env file
@@ -49,6 +50,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/activities", LogsRouters);
 app.use("/api/academic-year", academicYearRouter);
 app.use("/api/classes", classRouter);
+app.use("/api/subject", subjectRouter);
 
 // global error handler
 app.use((err: Error, req: Request, res: Response) => {

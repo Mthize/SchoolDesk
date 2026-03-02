@@ -54,7 +54,7 @@ export const getAllClasses = async ( req: Request, res: Response ) => {
       Class.find(query)
         .populate("academicYear", "name")
         .populate("classTeacher", "name email")
-        .sort({ createAt: -1 })
+        .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
     ]);
@@ -117,7 +117,7 @@ export const deleteClass = async ( req: Request, res: Response ) => {
     await logActivity({
       userId, 
       action: `Deleted class: ${deleteClass?.name}`});
-    if (!deleteClass) {
+    if (!deletedClass) {
       return res.status(404).json({ message: "Class not found" })
     }
     res.json({ message: "Class was removed" })
