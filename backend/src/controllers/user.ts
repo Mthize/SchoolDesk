@@ -2,7 +2,7 @@ import { type Request, type Response } from "express";
 import { User } from "../models/user";
 import { generateToken } from "../utils/generateToken";
 import { logActivity } from "../utils/activitylog";
-import { type AuthRequest } from "../types/auth";
+import { type AuthRequest } from "../middleware/auth";
 
 // @desc Register a new user
 // @route POST /api/users/register
@@ -86,7 +86,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 };
 
 
-// @desc Update user (Adimn)
+// @desc Update user (Admin)
 // @route PUT /api/users/:id
 // @access Private Admin
 export const updateUser = async ( req: Request, res: Response ): Promise<void> => {
@@ -139,7 +139,7 @@ export const getAllUsers = async ( req: Request, res: Response ): Promise<void> 
     // 1. Parse query params safety
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const role = parseInt(req.query.role as string);
+    const role = req.query.role as string;
     const search = req.query.search as string;
 
     const skip = (page - 1) * limit;
@@ -154,7 +154,7 @@ export const getAllUsers = async ( req: Request, res: Response ): Promise<void> 
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
-        { email: { $regex: email, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -173,7 +173,7 @@ export const getAllUsers = async ( req: Request, res: Response ): Promise<void> 
 
       // Send Response
       res.json({
-      pagintation: {      
+      pagination: {      
         users,
         page,
         pages: Math.ceil(total / limit),

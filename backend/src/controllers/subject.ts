@@ -98,14 +98,15 @@ export const updateSubject = async (req: Request, res: Response) => {
       },
       { new: true, runValidators: true },
     );
+    if (!updatedSubject) {
+      return res.status(404).json({ message: "Subject not found" });
+    }
     const userId = (req as any).user._id;
     await logActivity({
       userId,
       action: `Update subject: ${updatedSubject.name}`,
     });
-    if (!updatedSubject) {
-      return res.status(404).json({ message: "Subject not found" });
-    }
+    res.status(200).json(updatedSubject);
   } catch (error) {
     console.error("updateSubject failed:", error);
     res.status(500).json({ message: "Server Error", error });
@@ -129,6 +130,6 @@ export const deleteSubject = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Subject deleted successfully" });
   } catch (error) {
     console.error("deleteSubject failed:", error);
-    
+    res.status(500).json({ message: "Server Error", error });
   }
 };

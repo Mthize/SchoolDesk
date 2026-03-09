@@ -1,16 +1,22 @@
-import exprees from "express";
+import express from "express";
 import { authorize, protect } from "../middleware/auth";
-import { createSubject } from "../controllers/subject";
+import {
+  createSubject,
+  getAllSubjects,
+  updateSubject,
+  deleteSubject,
+} from "../controllers/subject";
 
-
-const subjectRouter = exprees.Router();
+const subjectRouter = express.Router();
 
 subjectRouter
-  .route("/create")
+  .route("/")
   .post(protect, authorize(["admin"]), createSubject)
+  .get(protect, authorize(["admin"]), getAllSubjects);
 
 subjectRouter
-  .route("/create")
-  .post(protect, authorize(["admin"]), createSubject)
+  .route("/:id")
+  .put(protect, authorize(["admin"]), updateSubject)
+  .delete(protect, authorize(["admin"]), deleteSubject);
 
-export default subjectRouter
+export default subjectRouter;
