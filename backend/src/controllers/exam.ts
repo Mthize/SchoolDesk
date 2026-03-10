@@ -23,38 +23,50 @@ export const triggerExamGeneration = async (req: Request, res: Response) => {
     if (!subjectDoc)
       return res.status(404).json({ message: "Subject not found" });
 
-    const teacherId = (req as any).user._id;
-    const draftExam = await Exam.create({
-      title: title || `Auto-Generated: ${topic}`,
-      subject,
-      class: classId,
-      teacher: teacherId,
-      duration: duration || 60,
-      dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 1 week
-      isActive: false, // Draft mode
-      questions: [], // Empty for now, Inngest will fill this
-    });
+    const user = (req as any).user;
+    const teacherId = user.role === "teacher" ? user._id : undefined;
 
-    const userId = (req as any).user._id;
-    await logActivity({
-      userId,
-      action: `User triggered exam generation: ${draftExam._id}`,
-    });
+    let draftExam;
+    try {
+      draftExam = await Exam.create({
+        title: title || `Auto-Generated: ${topic}`,
+        subject,
+        class: classId,
+        ...(teacherId ? { teacher: teacherId } : {}),
+        createdByAdmin: user.role === "admin",
+        duration: duration || 60,
+        dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 1 week
+        isActive: false, // Draft mode
+        questions: [], // Empty for now, Inngest will fill this
+      });
 
-    await inngest.send({
-      name: "exam/generate",
-      data: {
+      const userId = (req as any).user._id;
+      await logActivity({
+        userId,
+        action: `User triggered exam generation: ${draftExam._id}`,
+      });
+
+      await inngest.send({
+        name: "exam/generate",
+        data: {
+          examId: draftExam._id,
+          topic,
+          subjectName: subjectDoc.name,
+          difficulty: difficulty || "Medium",
+          count: count || 10,
+        },
+      });
+
+      res.status(202).json({
+        message: "Exam generation started.",
         examId: draftExam._id,
-        topic,
-        subjectName: subjectDoc.name,
-        difficulty: difficulty || "Medium",
-        count: count || 10,
-      },
-    });
-    res.status(202).json({
-      message: "Exam generation started.",
-      examId: draftExam._id,
-    });
+      });
+    } catch (innerError) {
+      if (draftExam) {
+        await Exam.findByIdAndDelete(draftExam._id); // Cleanup orphaned draft on failure
+      }
+      throw innerError; // Rethrow to let the main catch block handle it
+    }
   } catch (error) {
     res.status(500).json({ message: "Server Error", error });
   }
@@ -64,9 +76,11 @@ export const triggerExamGeneration = async (req: Request, res: Response) => {
 // @route   POST /api/exams
 export const createExam = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     const exam = await Exam.create({
       ...req.body,
-      teacher: (req as any).user._id, // From Auth Middleware
+      ...(user.role === "teacher" ? { teacher: user._id } : {}),
+      createdByAdmin: user.role === "admin",
     });
     const userId = (req as any).user._id;
     await logActivity({ userId, action: "User created a new exam" });
@@ -178,7 +192,7 @@ export const toggleExamStatus = async (req: Request, res: Response) => {
     // Security Check: Ensure the user owns the exam (if not Admin)
     if (
       user.role !== "admin" &&
-      exam.teacher.toString() !== user._id.toString()
+      exam.teacher?.toString() !== user._id.toString()
     ) {
       return res
         .status(403)
@@ -205,8 +219,40 @@ export const toggleExamStatus = async (req: Request, res: Response) => {
 export const submitExam = async (req: Request, res: Response) => {
   try {
     const { answers } = req.body;
-    const studentId = (req as any).user._id;
+    const user = (req as any).user;
+    const studentId = user._id;
     const examId = req.params.id;
+
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ message: "Invalid or empty answers array" });
+    }
+
+    const exam = await Exam.findById(examId);
+
+    if (!exam) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    if (!exam.isActive) {
+      return res.status(400).json({ message: "Exam is not currently active" });
+    }
+
+    if (new Date() > exam.dueDate) {
+      return res.status(400).json({ message: "Exam due date has passed" });
+    }
+
+    if (user.role === "student") {
+      const examClassId = exam.class._id
+        ? exam.class._id.toString()
+        : exam.class.toString();
+      const userClassId = user.studentClass ? user.studentClass.toString() : "";
+
+      if (examClassId !== userClassId) {
+        return res
+          .status(403)
+          .json({ message: "You are not authorized to submit this exam" });
+      }
+    }
 
     // Trigger Inngest function to handle submission
     await inngest.send({
@@ -241,7 +287,7 @@ export const getExamResult = async (req: Request, res: Response) => {
       student: studentId,
     }).populate({
       path: "exam",
-      select: "title questions._id questions.correctAnswer", // <--- FORCE SELECT correct answers
+      select: "title questions._id -questions.correctAnswer", // Explicitly exclude correct answers
     });
     if (!submission) {
       return res.status(404).json({ message: "No submission found" });
