@@ -15,7 +15,8 @@ export interface IExam extends Document {
   title: string;
   subject: mongoose.Types.ObjectId;
   class: mongoose.Types.ObjectId;
-  teacher: mongoose.Types.ObjectId;
+  teacher?: mongoose.Types.ObjectId;
+  createdByAdmin?: boolean;
   duration: number;
   questions: IQuestion[];
   dueDate: Date;
@@ -28,7 +29,8 @@ const examSchema = new Schema (
     title: { type: String, required: true },
     subject: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
     class: { type: Schema.Types.ObjectId, ref: "Class", required: true },
-    teacher: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    teacher: { type: Schema.Types.ObjectId, ref: "User", required: false },
+    createdByAdmin: { type: Boolean, default: false },
     duration: { type: Number, required: true },
     dueDate: { type: Date, required: true },
     isActive: { type: Boolean, default: true },

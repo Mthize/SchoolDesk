@@ -3,8 +3,9 @@ import {
   triggerExamGeneration, 
   getExams, 
   submitExam, 
-  getExamsById, 
-  toggleExamStatus
+  getExamById, 
+  toggleExamStatus,
+  getExamResult
 } from "../controllers/exam";
 import { protect, authorize } from "../middleware/auth";
 
@@ -39,12 +40,14 @@ examRouter.get(
   "/:id/result", 
   protect, 
   authorize(["student", "teacher", "admin"]),
+  getExamResult
 );
 
-examRouter.post(
+examRouter.get(
   "/:id", 
   protect, 
   authorize(["student", "admin", "teacher"]),
+  getExamById
 );
 
 export default examRouter;

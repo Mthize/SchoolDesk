@@ -130,18 +130,28 @@ export const generateTimeTable = inngest.createFunction(
       const cleanJSON = text.replace(/```json/g, "").replace(/```/g, "");
       return JSON.parse(cleanJSON);
     });
-    // now let save
     await step.run("save-timetable", async () => {
-      // Delete existing to avoid duplicates
-      // we should also delete any timetable assigned or generate for these class
-      await Timetable.findOneAndDelete({
+      // Upsert a timetable document for each day in the AI schedule
+      for (const daySchedule of aiSchedule.schedule) {
+        await Timetable.findOneAndUpdate(
+          {
+            class: classId,
+            academicYear: academicYearId,
+            day: daySchedule.day,
+          },
+          {
+            $set: { periods: daySchedule.periods },
+          },
+          { upsert: true, new: true }
+        );
+      }
+
+      // Optionally, remove any timetable documents for days not present in the new schedule
+      const daysInSchedule = aiSchedule.schedule.map((ds: any) => ds.day);
+      await Timetable.deleteMany({
         class: classId,
         academicYear: academicYearId,
-      });
-      await Timetable.create({
-        class: classId,
-        academicYear: academicYearId,
-        schedule: aiSchedule.schedule,
+        day: { $nin: daysInSchedule },
       });
 
       return { success: true, classId };
