@@ -12,6 +12,9 @@ import LogsRouters from "./routes/activitieslog";
 import academicYearRouter from "./routes/academicYear";
 import classRouter from "./routes/class";
 import subjectRouter from "./routes/subject";
+import { serve } from "inngest/express";
+import { inngest } from "./inngest";
+import { inngestFunctions } from "./inngest/functions";
 
 
 // load environment variables from .env file
@@ -26,6 +29,8 @@ app.use(helmet()) // Security middlewares to set various HTTP headers for app se
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Middleware to parse URL-endcoded bodies
 app.use(cookieParser()) // Middleware to parse Cookies
+
+
 
 // log http requests to the console
 if(process.env.NODE_ENV === "development") {
@@ -51,6 +56,9 @@ app.use("/api/activities", LogsRouters);
 app.use("/api/academic-year", academicYearRouter);
 app.use("/api/classes", classRouter);
 app.use("/api/subject", subjectRouter);
+
+// Inngest route
+app.use("/api/inngest", serve({ client: inngest, functions: inngestFunctions }));
 
 // global error handler
 app.use((err: Error, req: Request, res: Response) => {

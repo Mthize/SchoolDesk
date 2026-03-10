@@ -78,7 +78,7 @@ export const getAllClasses = async ( req: Request, res: Response ) => {
 // @access Private
 export const updateClass = async ( req: Request, res: Response ) => {
   try {
-    const classId = req.params.id;
+    const classId = req.params.id as any;
     const { name, academicYear } = req.body;
 
     const existingClass = await Class.findOne({  
@@ -115,8 +115,8 @@ export const deleteClass = async ( req: Request, res: Response ) => {
     const deletedClass = await Class.findByIdAndDelete(req.params.id);
     const userId = (req as any).user.id;
     await logActivity({
-      userId, 
-      action: `Deleted class: ${deleteClass?.name}`});
+      userId,
+      action: `Deleted class: ${deletedClass?.name}`});
     if (!deletedClass) {
       return res.status(404).json({ message: "Class not found" })
     }

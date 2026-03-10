@@ -13,8 +13,8 @@ export const createAcademicYear = async (
   try {
     const { name, fromYear, toYear, isCurrent } = req.body;
 
-    const existingicYear = await AcademicYear.findOne({ fromYear, toYear });
-    if (existingicYear) {
+    const existingAcademicYear = await AcademicYear.findOne({ fromYear, toYear });
+    if (existingAcademicYear) {
       res.status(400).json({ message: "Academic year already exists" });
       return;
     }
@@ -112,14 +112,14 @@ export const getAllAcademicYears = async (
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
 
-    // Seacrh Query By Name
+    // Search Query By Name
     const query: any = {};
     if (search) {
       query.name = { $regex: search, $options: "i" };
     }
 
     const [total, years] = await Promise.all([
-      updateAcademicYear.countDocuments(query),
+      AcademicYear.countDocuments(query),
       AcademicYear.find(query)
         .sort({ name: 1 })
         .skip((page - 1) * limit)

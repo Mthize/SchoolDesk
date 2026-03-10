@@ -4,7 +4,7 @@ import { ActivityLog } from "../models/activitieslog";
 // @desc Get all activity logs
 // @route GET /api/activitylogs
 // @access Private Admin
-export const getAllActivites = async (
+export const getAllActivities = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
@@ -13,7 +13,7 @@ export const getAllActivites = async (
     const limit = Number(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const count = await ActivityLog.countDocument();
+    const count = await ActivityLog.countDocuments();
 
     const logs = await ActivityLog.find()
       .populate("user", "name email role")
