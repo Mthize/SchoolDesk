@@ -43,7 +43,10 @@ export const getAllClasses = async ( req: Request, res: Response ) => {
     const search = req.query.search as string;
 
     // Search Query 
-    const query: any = [];
+    const query: Record<string, any> = {};
+    if ((req as any).user?.role === "teacher") {
+      query.classTeacher = (req as any).user._id;
+    }
     if (search) {
       query.name = { $regex: search, $options: "i" };
     }
@@ -81,28 +84,33 @@ export const updateClass = async ( req: Request, res: Response ) => {
     const classId = req.params.id as any;
     const { name, academicYear } = req.body;
 
-    const existingClass = await Class.findOne({  
-      _id: { $ne: classId } 
-    });
-    if (!existingClass) {
-      const updatedClass = await Class.findByIdAndUpdate(
-        classId,
-        req.body,
-        { new: true, runValidators: true }
-      );
-      if (!updatedClass) {
-        return res.status(404).json({ message: "Class not found" })
-      }
-      await logActivity({
-        userId: (req as any).user?.id,
-        action: `Updated class: ${classId}`,
+    const duplicateFilter: Record<string, any> = { _id: { $ne: classId } };
+    if (name) duplicateFilter.name = name;
+    if (academicYear) duplicateFilter.academicYear = academicYear;
+
+    const existingClass = await Class.findOne(duplicateFilter);
+    if (existingClass) {
+      return res.status(400).json({
+        message: "Class with this name already exists for the specified academic year",
       });
-      
-      res.json(updatedClass);
-    } else {
-      res.status(400).json({ message: "Class with this name already exists for the specified academic year" })
     }
+
+    const updatedClass = await Class.findByIdAndUpdate(classId, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updatedClass) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+
+    await logActivity({
+      userId: (req as any).user?.id,
+      action: `Updated class: ${classId}`,
+    });
+
+    res.json(updatedClass);
   } catch (error) {
+    console.error("updateClass failed:", error);
     res.status(500).json({ message: "Server Error", error });
   }
 };

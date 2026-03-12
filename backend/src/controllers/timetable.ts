@@ -1,6 +1,6 @@
 import { type Request, type Response } from "express";
 import { logActivity } from "../utils/activitylog";
-import { inngest } from "../inngest";
+import { inngest } from "../inngest/index";
 import Timetable from "../models/timetable";
 
 // @desc    Generate a Timetable using AI

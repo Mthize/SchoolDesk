@@ -24,8 +24,8 @@ academicYearRoutes
   .get(getCurrentAcademicYear);
 
 academicYearRoutes
-  .route("/updata/:id") 
-  .patch(updateAcademicYear);
+  .route("/update/:id") 
+  .patch(protect, authorize(["admin"]), updateAcademicYear);
 
 academicYearRoutes
   .route("/delete/:id") 
