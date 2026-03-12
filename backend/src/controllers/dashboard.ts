@@ -3,8 +3,7 @@ import User from "../models/user";
 import Class from "../models/class";
 import Exam from "../models/exam";
 import Submission from "../models/submission";
-import ActivityLog from "../models/activitylog";
-import Timetable from "../models/timetable";
+import { ActivityLog } from "../models/activitieslog";
 
 
 // Helper to get name of the day
@@ -15,62 +14,57 @@ const getTodayName = () => new Date().toLocaleDateString("en-US", {weekday: 'lon
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    let stats = {};
+    let stats = {} as Record<string, unknown>;
     // Get last 5 activities system wide (Admin) or for the user (Student/Teacher)
-    const activityQuery = user.role === 'damin' ? {} : { user: user._id };
-    const recentActivities = await Activitylog.find(activityQuery)
+    const activityQuery = user.role === "admin" ? {} : { user: user._id };
+    const recentActivities = await ActivityLog.find(activityQuery)
       .sort({ createdAt: -1 })
       .limit(5)
       .populate("user", "name");
 
-    const formattedActivities = recentActivities.map((log => 
-      `${(log.user as any).name}: ${log.action} (${new Date(log.createdAt as 
-       any).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})})`
-    ));
+    const recentActivity = recentActivities.map((log) =>
+      `${(log.user as any).name}: ${log.action} (${new Date(
+        log.createdAt as any,
+      ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`,
+    );
 
-    if (user.role === 'admin') {
-      const totalStudents = await User.countDocuments({ role: 'student' });
-      const totalTeachers = await User.countDocuments({ role: 'teacher' });
-      const isActiceExams = await Exam.countDocuments({ isActive: true });
-
-
-      // Mack Attendance 
-      const avgAttendance = "95.5%";
+    if (user.role === "admin") {
+      const [totalStudents, totalTeachers, activeExams] = await Promise.all([
+        User.countDocuments({ role: "student" }),
+        User.countDocuments({ role: "teacher" }),
+        Exam.countDocuments({ isActive: true }),
+      ]);
 
       stats = {
         totalStudents,
         totalTeachers,
-        activeExam,
-        avgAttendance,
-        recentActivities: formattedActivity,
+        activeExams,
+        avgAttendance: "95.5%",
+        recentActivity,
       };
-    } else if (user.role === 'teacher') {
-      // 1. Count classes assigned to the teacher
+    } else if (user.role === "teacher") {
       const myClassesCount = await Class.countDocuments({ classTeacher: user._id });
 
-      // 2. Pending Grading: Submissions for exams that are not yet marked as completed
-      const myExams = await Exam.find({ teacher: user._id }).select({'_id'});
-      const myExamsIds = myExams.map(exam => exam._id);
-      const pendingGrades = await Submission.find({ exam: { $in: myExamsIds}, score: 0 });
+      const myExams = await Exam.find({ teacher: user._id }).select({ _id: 1 });
+      const myExamsIds = myExams.map((exam) => exam._id);
+      const pendingGrading = await Submission.countDocuments({
+        exam: { $in: myExamsIds },
+        score: 0,
+      });
 
-
-      // 3. Next Class
-      // Find the timetable where is the teacher is teacher today
       const today = getTodayName();
-      // TODO: Complex aggregation 
-      // This is a placeholder for the logice to find the specific period based on the current time
-      const nextClass = "Mathematics - Grade 10";
+      // TODO: replace placeholders with real timetable lookup
+      const nextClass = `Next lesson (${today})`;
       const nextClassTime = "09:00";
 
       stats = {
         myClassesCount,
-        pendingGrades,
+        pendingGrading,
         nextClass,
         nextClassTime,
-        recantActivity: formattedActivity,
+        recentActivity,
       };
-    } else if (user.role === 'student') {
-      // 1. Assignments/Exams Due
+    } else if (user.role === "student") {
       const nextExam = await Exam.findOne({
         class: user.studentClass,
         dueDate: { $gte: new Date() },
@@ -82,15 +76,16 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         dueDate: { $gte: new Date() },
       });
 
-      // 2. Attendance *Mockup*
-      const myAttendance = '97%';
+      const myAttendance = "97%";
 
       stats = {
         myAttendance,
         pendingAssignments,
         nextExam: nextExam?.title || "No upcoming exams",
-        nextExamDate: nextExam ? new Date(nextExam.dueDate).toLocaleDateString() : "",
-        recantActivity: formattedActivity,
+        nextExamDate: nextExam
+          ? new Date(nextExam.dueDate).toLocaleDateString()
+          : "",
+        recentActivity,
       };
     }
     res.json(stats);

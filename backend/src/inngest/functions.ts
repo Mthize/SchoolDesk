@@ -1,10 +1,10 @@
-import type _class from "../models/class.ts";
-import { inngest } from "./index.ts";
-import Class from "../models/class.ts";
-import User from "../models/user.ts";
-import Timetable from "../models/timetable.ts";
-import Exam from "../models/exam.ts";
-import Submission from "../models/submission.ts";
+import type _class from "../models/class";
+import { inngest } from "./index";
+import Class from "../models/class";
+import User from "../models/user";
+import Timetable from "../models/timetable";
+import Exam from "../models/exam";
+import Submission from "../models/submission";
 
 import { NonRetriableError } from "inngest";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
@@ -37,14 +37,14 @@ export const generateTimeTable = inngest.createFunction(
 
       // filter qualified teachers for class subjects
       const classSubjectsIds = classData.subjects.map((sub) =>
-        sub._id.toString()
+        sub._id.toString(),
       );
 
       const qualifiedTeachers = allTeacher
         .filter((teacher) => {
           if (!teacher.teacherSubject) return false;
           return teacher.teacherSubject.some((subId) =>
-            classSubjectsIds.includes(subId.toString())
+            classSubjectsIds.includes(subId.toString()),
           );
         })
         .map((tea) => ({
@@ -62,7 +62,7 @@ export const generateTimeTable = inngest.createFunction(
       // here we should check if we have teachers and subjects
       if (subjectsPayload.length === 0 || qualifiedTeachers.length === 0)
         throw new NonRetriableError(
-          "No Subjects or Teachers assigned to these class"
+          "No Subjects or Teachers assigned to these class",
         );
 
       return {
@@ -89,8 +89,8 @@ export const generateTimeTable = inngest.createFunction(
         CONTEXT:
         - Class: ${contextData.className}
         - Hours: ${settings.startTime} to ${settings.endTime} (${
-        settings.periods
-      } periods/day).
+          settings.periods
+        } periods/day).
 
         RESOURCES:
         - Subjects: ${JSON.stringify(contextData.subjects)}
@@ -130,34 +130,24 @@ export const generateTimeTable = inngest.createFunction(
       const cleanJSON = text.replace(/```json/g, "").replace(/```/g, "");
       return JSON.parse(cleanJSON);
     });
+    // now let save
     await step.run("save-timetable", async () => {
-      // Upsert a timetable document for each day in the AI schedule
-      for (const daySchedule of aiSchedule.schedule) {
-        await Timetable.findOneAndUpdate(
-          {
-            class: classId,
-            academicYear: academicYearId,
-            day: daySchedule.day,
-          },
-          {
-            $set: { periods: daySchedule.periods },
-          },
-          { upsert: true, new: true }
-        );
-      }
-
-      // Optionally, remove any timetable documents for days not present in the new schedule
-      const daysInSchedule = aiSchedule.schedule.map((ds: any) => ds.day);
-      await Timetable.deleteMany({
+      // Delete existing to avoid duplicates
+      // we should also delete any timetable assigned or generate for these class
+      await Timetable.findOneAndDelete({
         class: classId,
         academicYear: academicYearId,
-        day: { $nin: daysInSchedule },
+      });
+      await Timetable.create({
+        class: classId,
+        academicYear: academicYearId,
+        schedule: aiSchedule.schedule,
       });
 
       return { success: true, classId };
     });
     return { message: "Timetable generated successfully" };
-  }
+  },
 );
 
 // Your new function:
@@ -234,7 +224,7 @@ export const generateExam = inngest.createFunction(
       return { success: true, count: aiExam.length };
     });
     return { message: "Exam generated successfully" };
-  }
+  },
 );
 
 // handle submission inside inngest
@@ -258,7 +248,7 @@ export const handleExamSubmission = inngest.createFunction(
 
       // 2. Fetch full exam (with answers)
       const exam = await Exam.findById(examId).select(
-        "+questions.correctAnswer"
+        "+questions.correctAnswer",
       );
       if (!exam) {
         throw new NonRetriableError(`Exam ${examId} not found`);
@@ -271,7 +261,7 @@ export const handleExamSubmission = inngest.createFunction(
       exam.questions.forEach((question) => {
         totalPoints += question.points;
         const studentAns = answers.find(
-          (a: any) => a.questionId === question._id.toString()
+          (a: any) => a.questionId === question._id.toString(),
         );
         if (studentAns && studentAns.answer === question.correctAnswer) {
           score += question.points;
@@ -287,7 +277,5 @@ export const handleExamSubmission = inngest.createFunction(
       });
     });
     return { message: "Exam submitted successfully" };
-  }
+  },
 );
-
-export const inngestFunctions = [generateTimeTable, generateExam, handleExamSubmission];

@@ -5,7 +5,10 @@
   "private": true,
   "scripts": {
     "dev" : "nodemon --exec bun src/server.ts",
-    "start": "bun --watch src/server.ts"
+    "start": "bun --watch src/server.ts",
+    "seed:admin": "bun run src/scripts/seedAdmin.ts",
+    "seed:demo": "bun run src/scripts/seedTestData.ts",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",

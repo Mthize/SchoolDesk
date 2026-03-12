@@ -173,13 +173,13 @@ export const getAllUsers = async ( req: Request, res: Response ): Promise<void> 
 
       // Send Response
       res.json({
-      pagination: {      
         users,
-        page,
-        pages: Math.ceil(total / limit),
-        total,
-       }
-    });
+        pagination: {
+          page,
+          pages: Math.ceil(total / limit),
+          total,
+        },
+      });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error })
   }
@@ -216,18 +216,46 @@ export const deleteUser = async (req: Request, res: Response) => {
 // @access Private
 export const getUserProfile = async (req: AuthRequest, res: Response) => {
   try {
-    if (req.user) {
-      res.json({
-        user: {
-          _id: req.user._id,
-          name: req.user.name,
-          email: req.user.email,
-          role: req.user.role,
-        }
-      });
-    } else {
+    if (!req.user) {
       res.status(401).json({ message: "Not authorized" });
+      return;
     }
+
+    const profile = await User.findById(req.user._id)
+      .select("-password")
+      .populate("studentClass", "name")
+      .populate("teacherSubject", "name code");
+
+    if (!profile) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const studentClass = profile.studentClass
+      ? {
+          _id: (profile.studentClass as any)._id,
+          name: (profile.studentClass as any).name,
+        }
+      : null;
+
+    const teacherSubjects = Array.isArray(profile.teacherSubject)
+      ? (profile.teacherSubject as any[]).map((subject) => ({
+          _id: subject._id,
+          name: subject.name,
+          code: subject.code,
+        }))
+      : [];
+
+    res.json({
+      user: {
+        _id: profile._id,
+        name: profile.name,
+        email: profile.email,
+        role: profile.role,
+        studentClass,
+        teacherSubjects,
+      },
+    });
   } catch (error) {
      res.status(500).json({ message: "Server Error", error });
   }
@@ -243,7 +271,10 @@ export const logoutUser = async (req: Request, res: Response) => {
     res.cookie("jwt", "", {
       httpOnly: true,
       expires: new Date(0),
-    })
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+    res.status(200).json({ message: "Logged out" });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error });
   }
